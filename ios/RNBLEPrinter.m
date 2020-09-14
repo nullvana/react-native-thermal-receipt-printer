@@ -62,24 +62,28 @@ RCT_EXPORT_METHOD(connectPrinter:(NSString *)inner_mac_address
                   success:(RCTResponseSenderBlock)successCallback
                   fail:(RCTResponseSenderBlock)errorCallback) {
     @try {
+        NSLog(@"connectPrinter");
         __block BOOL found = NO;
         __block Printer* selectedPrinter = nil;
-        [_printerArray enumerateObjectsUsingBlock: ^(id obj, NSUInteger idx, BOOL *stop){
-            selectedPrinter = (Printer *)obj;
-            if ([inner_mac_address isEqualToString:(selectedPrinter.UUIDString)]) {
-                found = YES;
-                *stop = YES;
+        [[PrinterSDK defaultPrinterSDK] scanPrintersWithCompletion:^(Printer* printer){
+            [_printerArray addObject:printer];
+            [_printerArray enumerateObjectsUsingBlock: ^(id obj, NSUInteger idx, BOOL *stop){
+                selectedPrinter = (Printer *)obj;
+                if ([inner_mac_address isEqualToString:(selectedPrinter.UUIDString)]) {
+                    found = YES;
+                    *stop = YES;
+                }
+            }];
+
+            if (found) {
+                [[PrinterSDK defaultPrinterSDK] connectBT:selectedPrinter];
+                [[NSNotificationCenter defaultCenter] postNotificationName:@"BLEPrinterConnected" object:nil];
+                m_printer = selectedPrinter;
+                successCallback(@[[NSString stringWithFormat:@"Connected to printer %@", selectedPrinter.name]]);
+            } else {
+                [NSException raise:@"Invalid connection" format:@"connectPrinter: Can't connect to printer %@", inner_mac_address];
             }
         }];
-        
-        if (found) {
-            [[PrinterSDK defaultPrinterSDK] connectBT:selectedPrinter];
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"BLEPrinterConnected" object:nil];
-            m_printer = selectedPrinter;
-            successCallback(@[[NSString stringWithFormat:@"Connected to printer %@", selectedPrinter.name]]);
-        } else {
-            [NSException raise:@"Invalid connection" format:@"connectPrinter: Can't connect to printer %@", inner_mac_address];
-        }
     } @catch (NSException *exception) {
         errorCallback(@[exception.reason]);
     }
@@ -90,26 +94,7 @@ RCT_EXPORT_METHOD(printRawData:(NSString *)text
                   fail:(RCTResponseSenderBlock)errorCallback) {
     @try {
         !m_printer ? [NSException raise:@"Invalid connection" format:@"printRawData: Can't connect to printer"] : nil;
-        
-        NSNumber* boldPtr = [options valueForKey:@"bold"];
-        NSNumber* alignCenterPtr = [options valueForKey:@"center"];
-
-        BOOL bold = (BOOL)[boldPtr intValue];
-        BOOL alignCenter = (BOOL)[alignCenterPtr intValue];
-
-        bold ? [[PrinterSDK defaultPrinterSDK] sendHex:@"1B2108"] : [[PrinterSDK defaultPrinterSDK] sendHex:@"1B2100"];
-        alignCenter ? [[PrinterSDK defaultPrinterSDK] sendHex:@"1B6102"] : [[PrinterSDK defaultPrinterSDK] sendHex:@"1B6101"];
-        [[PrinterSDK defaultPrinterSDK] printText:text];
-        
-        NSNumber* beepPtr = [options valueForKey:@"beep"];
-        NSNumber* cutPtr = [options valueForKey:@"cut"];
-        
-        BOOL beep = (BOOL)[beepPtr intValue];
-        BOOL cut = (BOOL)[cutPtr intValue];
-        
-        beep ? [[PrinterSDK defaultPrinterSDK] beep] : nil;
-        cut ? [[PrinterSDK defaultPrinterSDK] cutPaper] : nil;
-        
+        [[PrinterSDK defaultPrinterSDK] sendHex:text];
     } @catch (NSException *exception) {
         errorCallback(@[exception.reason]);
     }
