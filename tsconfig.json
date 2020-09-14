@@ -12,7 +12,8 @@
     "jsx": "react-native",
     "types": [
       "react",
-      "jest"
+      "jest",
+      "node"
     ],
     "declaration": true,
     "moduleResolution": "node",

@@ -3,6 +3,7 @@ interface PrinterOptions {
     beep?: boolean;
     cut?: boolean;
     tailingLine?: boolean;
+    base64?: boolean;
     encoding?: string;
 }
 interface IUSBPrinter {

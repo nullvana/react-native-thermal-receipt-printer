@@ -20,6 +20,7 @@
     "android"
   ],
   "dependencies": {
+    "@types/node": "^14.10.0",
     "buffer": "^5.0.7",
     "escpos-printer-toolkit": "git+https://github.com/nullvana/escpos-printer-toolkit.git",
     "iconv-lite": "^0.4.19",

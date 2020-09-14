@@ -9,8 +9,10 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
-import { NativeModules, NativeEventEmitter, Platform } from "react-native";
+import { Buffer } from "buffer";
 import EPToolkit from "escpos-printer-toolkit";
+import * as iconv from "iconv-lite";
+import { NativeEventEmitter, NativeModules, Platform } from "react-native";
 var RNUSBPrinter = NativeModules.RNUSBPrinter;
 var RNBLEPrinter = NativeModules.RNBLEPrinter;
 var RNNetPrinter = NativeModules.RNNetPrinter;
@@ -20,10 +22,11 @@ var textTo64Buffer = function (text, opts) {
         cut: false,
         tailingLine: false,
         encoding: "UTF8",
+        base64: true,
     };
     var options = __assign(__assign({}, defaultOptions), opts);
     var buffer = EPToolkit.exchange_text(text, options);
-    return buffer.toString("base64");
+    return options.base64 ? buffer.toString("base64") : buffer.toString();
 };
 var billTo64Buffer = function (text, opts) {
     var defaultOptions = {
@@ -31,10 +34,11 @@ var billTo64Buffer = function (text, opts) {
         cut: true,
         encoding: "UTF8",
         tailingLine: true,
+        base64: true,
     };
     var options = __assign(__assign({}, defaultOptions), opts);
     var buffer = EPToolkit.exchange_text(text, options);
-    return buffer.toString("base64");
+    return options.base64 ? buffer.toString("base64") : buffer.toString();
 };
 var textPreprocessingIOS = function (text) {
     var options = {
@@ -42,8 +46,11 @@ var textPreprocessingIOS = function (text) {
         cut: true,
     };
     return {
-        text: text.replace(/<\/?CB>/g, '').replace(/<\/?C>/g, '').replace(/<\/?B>/g, ''),
-        opts: options
+        text: text
+            .replace(/<\/?CB>/g, "")
+            .replace(/<\/?C>/g, "")
+            .replace(/<\/?B>/g, ""),
+        opts: options,
     };
 };
 export var USBPrinter = {
@@ -70,16 +77,12 @@ export var USBPrinter = {
     },
     printText: function (text, opts) {
         if (opts === void 0) { opts = {}; }
-        return RNUSBPrinter.printRawData(textTo64Buffer(text, opts), function (error) {
-            return console.warn(error);
-        });
+        return RNUSBPrinter.printRawData(textTo64Buffer(text, opts), function (error) { return console.warn(error); });
     },
     printBill: function (text, opts) {
         if (opts === void 0) { opts = {}; }
-        return RNUSBPrinter.printRawData(billTo64Buffer(text, opts), function (error) {
-            return console.warn(error);
-        });
-    }
+        return RNUSBPrinter.printRawData(billTo64Buffer(text, opts), function (error) { return console.warn(error); });
+    },
 };
 export var BLEPrinter = {
     init: function () {
@@ -105,22 +108,28 @@ export var BLEPrinter = {
     },
     printText: function (text, opts) {
         if (opts === void 0) { opts = {}; }
-        return RNBLEPrinter.printRawData(textTo64Buffer(text, opts), function (error) {
-            return console.warn(error);
-        });
+        if (Platform.OS === "ios") {
+            // console.log("nullvana\n" + Buffer.from(text).toString("hex"));
+            // RNBLEPrinter.printRawData(text, opts, (error: Error) => console.warn(error));
+            console.log("nullvana text\n" + Buffer.from(text).toString("hex"));
+            var encText = iconv.encode(text, "euc-kr");
+            console.log("nullvana encText\n" + Buffer.from(encText).toString("hex"));
+            RNBLEPrinter.printRawData(encText, opts, function (error) { return console.warn(error); });
+        }
+        else {
+            RNBLEPrinter.printRawData(textTo64Buffer(text, opts), function (error) { return console.warn(error); });
+        }
     },
     printBill: function (text, opts) {
         if (opts === void 0) { opts = {}; }
-        if (Platform.OS === 'ios') {
+        if (Platform.OS === "ios") {
             var processedText = textPreprocessingIOS(text);
             RNBLEPrinter.printRawData(processedText.text, processedText.opts, function (error) { return console.warn(error); });
         }
         else {
-            RNBLEPrinter.printRawData(billTo64Buffer(text, opts), function (error) {
-                return console.warn(error);
-            });
+            RNBLEPrinter.printRawData(billTo64Buffer(text, opts), function (error) { return console.warn(error); });
         }
-    }
+    },
 };
 export var NetPrinter = {
     init: function () {
@@ -146,21 +155,27 @@ export var NetPrinter = {
     },
     printText: function (text, opts) {
         if (opts === void 0) { opts = {}; }
-        return RNNetPrinter.printRawData(textTo64Buffer(text, opts), function (error) {
-            return console.warn(error);
-        });
+        if (Platform.OS === "ios") {
+            var encText = iconv.encode(text, "euc-kr");
+            console.log("nullvana encText\n" + Buffer.from(encText).toString("hex"));
+            encText = Buffer.concat([Buffer.from([0x1b, 0x40]), encText]);
+            RNNetPrinter.printRawData(encText, opts, function (error) { return console.warn(error); });
+        }
+        else {
+            var encText = iconv.encode(text, "euc-kr");
+            encText = Buffer.concat([Buffer.from([0x1b, 0x40]), encText]);
+            RNNetPrinter.printRawData(encText.toString("base64"), function (error) { return console.warn(error); });
+        }
     },
     printBill: function (text, opts) {
         if (opts === void 0) { opts = {}; }
-        if (Platform.OS === 'ios') {
+        if (Platform.OS === "ios") {
             var processedText = textPreprocessingIOS(text);
             RNNetPrinter.printRawData(processedText.text, processedText.opts, function (error) { return console.warn(error); });
         }
         else {
-            RNNetPrinter.printRawData(billTo64Buffer(text, opts), function (error) {
-                return console.warn(error);
-            });
+            RNNetPrinter.printRawData(billTo64Buffer(text, opts), function (error) { return console.warn(error); });
         }
-    }
+    },
 };
 export var NetPrinterEventEmitter = new NativeEventEmitter(RNNetPrinter);
