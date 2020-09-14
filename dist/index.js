@@ -9,7 +9,6 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
-import { Buffer } from "buffer";
 import EPToolkit from "escpos-printer-toolkit";
 import * as iconv from "iconv-lite";
 import { NativeEventEmitter, NativeModules, Platform } from "react-native";
@@ -108,16 +107,12 @@ export var BLEPrinter = {
     },
     printText: function (text, opts) {
         if (opts === void 0) { opts = {}; }
+        var encText = iconv.encode(text, "euc-kr");
         if (Platform.OS === "ios") {
-            // console.log("nullvana\n" + Buffer.from(text).toString("hex"));
-            // RNBLEPrinter.printRawData(text, opts, (error: Error) => console.warn(error));
-            console.log("nullvana text\n" + Buffer.from(text).toString("hex"));
-            var encText = iconv.encode(text, "euc-kr");
-            console.log("nullvana encText\n" + Buffer.from(encText).toString("hex"));
-            RNBLEPrinter.printRawData(encText, opts, function (error) { return console.warn(error); });
+            RNBLEPrinter.printRawData(encText.toString("hex"), opts, function (error) { return console.warn(error); });
         }
         else {
-            RNBLEPrinter.printRawData(textTo64Buffer(text, opts), function (error) { return console.warn(error); });
+            RNBLEPrinter.printRawData(encText.toString("base64"), function (error) { return console.warn(error); });
         }
     },
     printBill: function (text, opts) {
@@ -155,15 +150,11 @@ export var NetPrinter = {
     },
     printText: function (text, opts) {
         if (opts === void 0) { opts = {}; }
+        var encText = iconv.encode(text, "euc-kr");
         if (Platform.OS === "ios") {
-            var encText = iconv.encode(text, "euc-kr");
-            console.log("nullvana encText\n" + Buffer.from(encText).toString("hex"));
-            encText = Buffer.concat([Buffer.from([0x1b, 0x40]), encText]);
-            RNNetPrinter.printRawData(encText, opts, function (error) { return console.warn(error); });
+            RNNetPrinter.printRawData(encText.toString("hex"), opts, function (error) { return console.warn(error); });
         }
         else {
-            var encText = iconv.encode(text, "euc-kr");
-            encText = Buffer.concat([Buffer.from([0x1b, 0x40]), encText]);
             RNNetPrinter.printRawData(encText.toString("base64"), function (error) { return console.warn(error); });
         }
     },
